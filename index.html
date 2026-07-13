@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>การทดสอบ Avatar — งานวิจัยคัดกรองภาวะซึมเศร้า</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0b16; --ink:#eef1fb; --muted:#9aa3c4; --dim:#5e6488;
+    --line:rgba(255,255,255,.12); --card:rgba(255,255,255,.05);
+    --v:#8b5cf6; --c:#38bdf8; --p:#f472b6; --y:#fbbf24; --g:#34d399;
+    --mono:'Space Grotesk',monospace; --sans:'Prompt',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:var(--sans)}
+  body{background:var(--bg);color:var(--ink);min-height:100vh;
+    background-image:radial-gradient(60vmax 40vmax at 80% -10%,rgba(139,92,246,.18),transparent 60%),radial-gradient(50vmax 40vmax at 0% 110%,rgba(56,189,248,.12),transparent 55%);}
+  .wrap{max-width:640px;margin:0 auto;padding:32px 22px 60px;min-height:100vh;display:flex;flex-direction:column;justify-content:center}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:30px 26px;backdrop-filter:blur(8px)}
+  .kick{font-family:var(--mono);font-size:12px;letter-spacing:.25em;text-transform:uppercase;color:var(--c);margin-bottom:12px}
+  h1{font-size:26px;font-weight:800;line-height:1.15;margin-bottom:8px}
+  h2{font-size:21px;font-weight:700;line-height:1.2;margin-bottom:6px}
+  .grad{background:linear-gradient(100deg,var(--v),var(--c) 50%,var(--p));-webkit-background-clip:text;background-clip:text;color:transparent}
+  p{color:var(--muted);line-height:1.6;font-size:15px}
+  label{display:block;font-size:14px;font-weight:600;margin:16px 0 6px}
+  input,select,textarea{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:12px;
+    padding:12px 14px;color:var(--ink);font-size:15px;outline:none}
+  input:focus,select:focus,textarea:focus{border-color:var(--c)}
+  select option{background:#12132a}
+  .btn{display:block;width:100%;margin-top:22px;padding:15px;border:none;border-radius:14px;font-size:16px;font-weight:700;
+    color:#0a0b16;background:linear-gradient(100deg,var(--c),var(--v));cursor:pointer;transition:transform .12s,filter .12s}
+  .btn:hover{filter:brightness(1.08)} .btn:active{transform:scale(.985)}
+  .btn:disabled{opacity:.4;cursor:not-allowed;filter:grayscale(.4)}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--muted);font-weight:600}
+  .err{color:#fca5a5;font-size:13px;margin-top:8px;min-height:18px}
+  .prog{display:flex;gap:6px;justify-content:center;margin-bottom:20px}
+  .prog i{width:34px;height:5px;border-radius:3px;background:rgba(255,255,255,.14);transition:.3s}
+  .prog i.on{background:linear-gradient(100deg,var(--c),var(--v))}
+  /* avatar stage */
+  .stage{text-align:center}
+  .avwrap{position:relative;width:230px;height:300px;margin:6px auto 0;border-radius:20px;overflow:hidden;
+    border:1px solid var(--line);box-shadow:0 24px 60px rgba(0,0,0,.5)}
+  .avwrap img{width:100%;height:100%;object-fit:cover;display:block}
+  .speak{position:absolute;left:0;right:0;bottom:0;padding:10px;font-family:var(--mono);font-size:12px;letter-spacing:.1em;
+    background:linear-gradient(0deg,rgba(10,11,22,.85),transparent);color:var(--c)}
+  .speak b{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--c);margin-right:6px;animation:pulse 1s infinite}
+  @keyframes pulse{50%{opacity:.25;transform:scale(.7)}}
+  .ring{position:absolute;inset:-3px;border-radius:22px;border:2px solid transparent;
+    background:linear-gradient(100deg,var(--c),var(--v),var(--p)) border-box;-webkit-mask:linear-gradient(#000 0 0) padding-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:.7;animation:spin 6s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .say{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-top:20px;
+    font-size:16px;line-height:1.7;text-align:left;min-height:96px}
+  .say .q{opacity:0;transform:translateY(6px);transition:.5s}
+  .say .q.show{opacity:1;transform:none}
+  /* rating */
+  .rate{margin-top:6px}
+  .rrow{margin:18px 0}
+  .rrow .lab{font-size:15px;font-weight:600;margin-bottom:10px}
+  .rrow .lab small{display:block;font-weight:400;color:var(--dim);font-size:12px;margin-top:2px}
+  .scale{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+  .scale button{aspect-ratio:1;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03);
+    color:var(--muted);font-size:17px;font-weight:700;cursor:pointer;transition:.12s}
+  .scale button:hover{border-color:var(--c)}
+  .scale button.sel{background:linear-gradient(100deg,var(--c),var(--v));color:#0a0b16;border-color:transparent}
+  .ends{display:flex;justify-content:space-between;font-size:11px;color:var(--dim);margin-top:5px}
+  .choice{display:grid;gap:10px;margin-top:8px}
+  .choice button{display:flex;align-items:center;gap:12px;text-align:left;padding:12px 14px;border:1px solid var(--line);
+    border-radius:14px;background:rgba(255,255,255,.03);color:var(--ink);cursor:pointer;font-size:15px;font-weight:600}
+  .choice button.sel{border-color:var(--c);background:rgba(56,189,248,.1)}
+  .choice img{width:44px;height:56px;object-fit:cover;border-radius:8px}
+  .foot{text-align:center;font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:22px;letter-spacing:.1em}
+  .center{text-align:center}
+  .big{font-size:52px;margin:6px 0}
+  .chk{display:flex;gap:10px;align-items:flex-start;margin-top:18px;font-size:14px;color:var(--muted);cursor:pointer}
+  .chk input{width:auto;margin-top:3px}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="prog" id="prog"></div>
+  <div id="app"></div>
+  <div class="foot">ACMod · CAMT × Bournemouth University · v0.1 (test)</div>
+</div>
+
+<script>
+/* ============ CONFIG ============ */
+// ลำดับที่ทดสอบ: เหมือนคนน้อย -> มาก (orb -> cartoon -> realistic)
+const AVATARS = [
+  { id:'orb',       name:'แบบที่ 1',  img:'av_orb.jpg',       label:'เสียง (ไม่มีหน้า)' },
+  { id:'cartoon',   name:'แบบที่ 2',  img:'av_stylized.jpg',  label:'การ์ตูน' },
+  { id:'realistic', name:'แบบที่ 3',  img:'av_realistic.jpg', label:'หน้าคนจริง' },
+];
+// บทพูดเหมือนกันทุกแบบ (คุมตัวแปร: เปลี่ยนแค่หน้า)
+const SCRIPT = [
+  'สวัสดีค่ะ ยินดีที่ได้คุยกันนะคะ',
+  'ช่วงนี้เป็นยังไงบ้าง สบายดีไหมคะ',
+  'ถ้าพร้อมแล้ว กดปุ่มด้านล่างเพื่อประเมินได้เลยค่ะ',
+];
+const RATE_ITEMS = [
+  { key:'comfort',  q:'รู้สึกสบายใจแค่ไหน',           lo:'ไม่สบายใจเลย', hi:'สบายใจมาก' },
+  { key:'trust',    q:'รู้สึกไว้ใจแค่ไหน',             lo:'ไม่ไว้ใจเลย',  hi:'ไว้ใจมาก' },
+  { key:'creepy',   q:'รู้สึกน่าขนลุก/แปลก ๆ ไหม',    lo:'ไม่เลย',       hi:'ขนลุกมาก' },
+  { key:'openness', q:'อยากเปิดใจเล่าเรื่องจริง ๆ แค่ไหน', lo:'ไม่อยากเลย', hi:'อยากมาก' },
+];
+const DATA_ENDPOINT = ''; // ใส่ URL backend ทีหลังเพื่อเก็บ data ข้ามเครื่อง (ตอนนี้เก็บใน localStorage)
+/* ================================ */
+
+const app = document.getElementById('app');
+const progEl = document.getElementById('prog');
+const state = { participant:{}, ratings:{}, preference:null, comment:'', startedAt:new Date().toISOString() };
+let step = 0; // 0=welcome,1=form, then per avatar: view+rate, then final, then done
+const TOTAL_DOTS = 3 + AVATARS.length; // form + 3 avatars + final + ... simple
+function setProg(active){
+  const n = 2 + AVATARS.length + 1; // welcome/form counted loosely
+  progEl.innerHTML = Array.from({length:AVATARS.length+2},(_,i)=>`<i class="${i<active?'on':''}"></i>`).join('');
+}
+
+/* ---------- screens ---------- */
+function welcome(){
+  setProg(0);
+  app.innerHTML = `
+    <div class="card center">
+      <div class="kick">งานวิจัย · การคัดกรองด้วยการสนทนา</div>
+      <h1>คุยกับ <span class="grad">ผู้ช่วย AI 3 แบบ</span></h1>
+      <p style="margin-top:10px">คุณจะได้ลองคุยกับผู้ช่วย AI 3 แบบสั้น ๆ แล้วให้คะแนนความรู้สึก ใช้เวลาประมาณ 5 นาที ไม่มีคำตอบถูกผิด บอกความรู้สึกจริงได้เลยค่ะ</p>
+      <label class="chk"><input type="checkbox" id="consent"><span>ฉันยินยอมเข้าร่วมและให้เก็บข้อมูลเพื่อการวิจัย ข้อมูลจะถูกเก็บเป็นความลับและใช้เพื่อการศึกษาเท่านั้น</span></label>
+      <button class="btn" id="go" disabled>เริ่มต้น</button>
+    </div>`;
+  const c=document.getElementById('consent'), g=document.getElementById('go');
+  c.onchange=()=>g.disabled=!c.checked;
+  g.onclick=()=>{ step=1; form(); };
+}
+
+function form(){
+  setProg(1);
+  app.innerHTML = `
+    <div class="card">
+      <div class="kick">ก่อนเริ่ม · ข้อมูลผู้เข้าร่วม</div>
+      <h2>ขอข้อมูลสักนิดนะคะ</h2>
+      <label>ชื่อ (หรือชื่อเล่น)</label>
+      <input id="f-name" placeholder="เช่น ภูมิ" autocomplete="off">
+      <label>อีเมล</label>
+      <input id="f-email" type="email" placeholder="you@email.com" autocomplete="off">
+      <label>เพศ</label>
+      <select id="f-gender">
+        <option value="">เลือก</option>
+        <option>ชาย</option><option>หญิง</option><option>ไม่ระบุ</option><option>อื่น ๆ</option>
+      </select>
+      <label>อายุ</label>
+      <input id="f-age" type="number" min="1" max="120" placeholder="เช่น 25">
+      <div class="err" id="f-err"></div>
+      <button class="btn" id="f-go">ถัดไป</button>
+    </div>`;
+  document.getElementById('f-go').onclick=()=>{
+    const name=val('f-name'), email=val('f-email'), gender=val('f-gender'), age=val('f-age');
+    const err=document.getElementById('f-err');
+    if(!name){ err.textContent='กรุณากรอกชื่อ'; return; }
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ err.textContent='กรุณากรอกอีเมลให้ถูกต้อง'; return; }
+    if(!gender){ err.textContent='กรุณาเลือกเพศ'; return; }
+    if(!age || +age<1 || +age>120){ err.textContent='กรุณากรอกอายุให้ถูกต้อง'; return; }
+    state.participant={ name,email,gender,age:+age };
+    step=2; avatarView(0);
+  };
+}
+
+function avatarView(i){
+  setProg(2+i);
+  const a=AVATARS[i];
+  app.innerHTML = `
+    <div class="card stage">
+      <div class="kick">${a.name} จาก ${AVATARS.length}</div>
+      <div class="avwrap"><div class="ring"></div><img src="${a.img}" alt="${a.label}"><div class="speak"><b></b>กำลังพูด...</div></div>
+      <div class="say" id="say"></div>
+      <button class="btn" id="v-go" disabled>ประเมินแบบนี้</button>
+    </div>`;
+  const say=document.getElementById('say');
+  // เล่นบทพูดทีละบรรทัด (แทน video loop ไปก่อน)
+  say.innerHTML = SCRIPT.map((s,k)=>`<div class="q" id="q${k}">${s}</div>`).join('');
+  let k=0;
+  (function next(){
+    if(k>0) document.getElementById('q'+(k-1));
+    if(k<SCRIPT.length){ document.getElementById('q'+k).classList.add('show'); k++; setTimeout(next, 1100); }
+    else { document.getElementById('v-go').disabled=false; }
+  })();
+  document.getElementById('v-go').onclick=()=>rate(i);
+}
+
+function rate(i){
+  const a=AVATARS[i];
+  const ans={};
+  app.innerHTML = `
+    <div class="card">
+      <div class="kick">${a.name} · ให้คะแนนความรู้สึก</div>
+      <h2>คุยกับ${a.label}แล้ว รู้สึกยังไง</h2>
+      <div class="rate" id="rate"></div>
+      <div class="err" id="r-err"></div>
+      <button class="btn" id="r-go">${i<AVATARS.length-1?'ไปแบบต่อไป':'ไปหน้าสุดท้าย'}</button>
+    </div>`;
+  const box=document.getElementById('rate');
+  box.innerHTML = RATE_ITEMS.map(it=>`
+    <div class="rrow" data-key="${it.key}">
+      <div class="lab">${it.q}</div>
+      <div class="scale">${[1,2,3,4,5].map(n=>`<button data-n="${n}">${n}</button>`).join('')}</div>
+      <div class="ends"><span>${it.lo}</span><span>${it.hi}</span></div>
+    </div>`).join('');
+  box.querySelectorAll('.rrow').forEach(row=>{
+    row.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+      row.querySelectorAll('button').forEach(x=>x.classList.remove('sel'));
+      b.classList.add('sel'); ans[row.dataset.key]=+b.dataset.n;
+    });
+  });
+  document.getElementById('r-go').onclick=()=>{
+    if(Object.keys(ans).length<RATE_ITEMS.length){ document.getElementById('r-err').textContent='กรุณาให้คะแนนทุกข้อ'; return; }
+    state.ratings[a.id]=ans;
+    if(i<AVATARS.length-1) avatarView(i+1); else final();
+  };
+}
+
+function final(){
+  setProg(2+AVATARS.length);
+  app.innerHTML = `
+    <div class="card">
+      <div class="kick">เกือบเสร็จแล้ว</div>
+      <h2>ชอบ<span class="grad">แบบไหนมากที่สุด?</span></h2>
+      <p style="margin-top:6px">เลือกผู้ช่วย AI ที่คุณรู้สึกสบายใจและอยากคุยด้วยมากที่สุด</p>
+      <div class="choice" id="choice">
+        ${AVATARS.map(a=>`<button data-id="${a.id}"><img src="${a.img}"><span>${a.label}</span></button>`).join('')}
+      </div>
+      <label>อยากบอกอะไรเพิ่มไหม (ไม่บังคับ)</label>
+      <textarea id="cmt" rows="3" placeholder="เช่น ทำไมถึงชอบแบบนี้..."></textarea>
+      <div class="err" id="fi-err"></div>
+      <button class="btn" id="fi-go">ส่งคำตอบ</button>
+    </div>`;
+  document.querySelectorAll('#choice button').forEach(b=>b.onclick=()=>{
+    document.querySelectorAll('#choice button').forEach(x=>x.classList.remove('sel'));
+    b.classList.add('sel'); state.preference=b.dataset.id;
+  });
+  document.getElementById('fi-go').onclick=()=>{
+    if(!state.preference){ document.getElementById('fi-err').textContent='กรุณาเลือกแบบที่ชอบที่สุด'; return; }
+    state.comment=val('cmt');
+    submit();
+  };
+}
+
+async function submit(){
+  state.finishedAt=new Date().toISOString();
+  // เก็บลง localStorage (backup/ตอนยังไม่มี backend)
+  try{ const all=JSON.parse(localStorage.getItem('avatarTest')||'[]'); all.push(state); localStorage.setItem('avatarTest',JSON.stringify(all)); }catch(e){}
+  // ส่งไป backend ถ้ามี
+  if(DATA_ENDPOINT){ try{ await fetch(DATA_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(state)}); }catch(e){} }
+  done();
+}
+
+function done(){
+  progEl.innerHTML='';
+  app.innerHTML = `
+    <div class="card center">
+      <div class="big">🎉</div>
+      <h1>ขอบคุณมากค่ะ!</h1>
+      <p style="margin-top:8px">คำตอบของคุณถูกบันทึกแล้ว มีค่ามากสำหรับงานวิจัยนี้ ขอบคุณที่สละเวลานะคะ</p>
+      <button class="btn ghost" id="again" style="margin-top:24px">เริ่มใหม่ (สำหรับคนถัดไป)</button>
+    </div>`;
+  document.getElementById('again').onclick=()=>location.reload();
+}
+
+/* helpers */
+function val(id){ return (document.getElementById(id)?.value||'').trim(); }
+
+/* hidden researcher export: Shift+E = โหลดคำตอบทั้งหมดเป็น CSV (จากเครื่องนี้) */
+addEventListener('keydown',e=>{
+  if(e.shiftKey && e.code==='KeyE'){
+    const all=JSON.parse(localStorage.getItem('avatarTest')||'[]'); if(!all.length) return;
+    const rows=[['name','email','gender','age','pref','comment','startedAt','finishedAt',
+      ...AVATARS.flatMap(a=>RATE_ITEMS.map(it=>a.id+'_'+it.key))]];
+    all.forEach(r=>rows.push([r.participant.name,r.participant.email,r.participant.gender,r.participant.age,
+      r.preference,(r.comment||'').replace(/[\r\n,]/g,' '),r.startedAt,r.finishedAt,
+      ...AVATARS.flatMap(a=>RATE_ITEMS.map(it=>r.ratings?.[a.id]?.[it.key]??''))]));
+    const csv=rows.map(r=>r.map(c=>`"${String(c??'').replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob=new Blob(['﻿'+csv],{type:'text/csv'}); const u=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=u; a.download='avatar_test_responses.csv'; a.click();
+  }
+});
+
+welcome();
+</script>
+</body>
+</html>
