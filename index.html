@@ -104,7 +104,7 @@ const I18N = {
     fi_kick:'เกือบเสร็จแล้ว', fi_h_a:'ชอบ', fi_h_b:'แบบไหนมากที่สุด?',
     fi_intro:'เลือกผู้ช่วย AI ที่คุณรู้สึกสบายใจและอยากคุยด้วยมากที่สุด',
     fi_cmt:'อยากบอกอะไรเพิ่มไหม (ไม่บังคับ)', fi_cmt_ph:'เช่น ทำไมถึงชอบแบบนี้...',
-    fi_err:'กรุณาเลือกแบบที่ชอบที่สุด', fi_go:'ส่งคำตอบ',
+    fi_err:'กรุณาเลือกแบบที่ชอบที่สุด', fi_go:'ส่งคำตอบ', fi_sending:'กำลังส่ง...',
     d_h:'ขอบคุณมากค่ะ!', d_p:'คำตอบของคุณถูกบันทึกแล้ว มีค่ามากสำหรับงานวิจัยนี้ ขอบคุณที่สละเวลานะคะ', d_again:'เริ่มใหม่ (สำหรับคนถัดไป)',
     avatars:[{id:'orb',name:'แบบที่ 1',img:'av_orb.jpg',label:'เสียง (ไม่มีหน้า)'},{id:'cartoon',name:'แบบที่ 2',img:'av_stylized.jpg',label:'การ์ตูน'},{id:'realistic',name:'แบบที่ 3',img:'av_realistic.jpg',label:'หน้าคนจริง'}],
     script:['สวัสดีค่ะ ยินดีที่ได้คุยกันนะคะ','ช่วงนี้เป็นยังไงบ้าง สบายดีไหมคะ','ถ้าพร้อมแล้ว กดปุ่มด้านล่างเพื่อประเมินได้เลยค่ะ'],
@@ -128,7 +128,7 @@ const I18N = {
     fi_kick:'Almost done', fi_h_a:'Which did you ', fi_h_b:'like most?',
     fi_intro:'Choose the AI helper you felt most comfortable with and would most want to talk to.',
     fi_cmt:'Anything you want to add? (optional)', fi_cmt_ph:'e.g. why you liked that one...',
-    fi_err:'Please choose the one you liked most', fi_go:'Submit',
+    fi_err:'Please choose the one you liked most', fi_go:'Submit', fi_sending:'Sending...',
     d_h:'Thank you!', d_p:'Your answers have been saved. They mean a lot to this research. Thank you for your time.', d_again:'Start again (for the next person)',
     avatars:[{id:'orb',name:'Face 1',img:'av_orb.jpg',label:'Voice (no face)'},{id:'cartoon',name:'Face 2',img:'av_stylized.jpg',label:'Cartoon'},{id:'realistic',name:'Face 3',img:'av_realistic.jpg',label:'Real face'}],
     script:["Hi, it's nice to talk with you.","How have you been lately? Are you doing okay?","When you're ready, tap the button below to rate this one."],
@@ -136,7 +136,7 @@ const I18N = {
     rate:[{key:'comfort',q:'How comfortable did you feel?',lo:'Not at all',hi:'Very'},{key:'trust',q:'How much did you trust it?',lo:'Not at all',hi:'A lot'},{key:'creepy',q:'Did it feel creepy or strange?',lo:'Not at all',hi:'Very creepy'},{key:'openness',q:'How willing were you to open up honestly?',lo:'Not at all',hi:'Very willing'}],
   }
 };
-const DATA_ENDPOINT = ''; // ใส่ URL backend ทีหลังเพื่อเก็บ data ข้ามเครื่อง (ตอนนี้เก็บ localStorage)
+const DATA_ENDPOINT = 'https://acmod-screening.onrender.com/api/avatar-test'; // เก็บ data ส่วนกลาง (MINDS backend + SQLite)
 /* ================================================ */
 
 let LANG = localStorage.getItem('avatarTestLang') || 'th';
@@ -300,8 +300,17 @@ function final(){
 
 async function submit(){
   state.finishedAt=new Date().toISOString(); state.lang=LANG;
+  const btn=document.getElementById('fi-go'); if(btn){ btn.disabled=true; btn.textContent=L().fi_sending; }
+  // เก็บ localStorage เป็น backup เสมอ
   try{ const all=JSON.parse(localStorage.getItem('avatarTest')||'[]'); all.push(state); localStorage.setItem('avatarTest',JSON.stringify(all)); }catch(e){}
-  if(DATA_ENDPOINT){ try{ await fetch(DATA_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(state)}); }catch(e){} }
+  // ส่งเข้า backend ส่วนกลาง (มี timeout กัน Render cold start ค้าง — ถ้าล้มเหลวยังมี backup)
+  if(DATA_ENDPOINT){
+    try{
+      const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),18000);
+      await fetch(DATA_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(state),signal:ctrl.signal});
+      clearTimeout(to);
+    }catch(e){}
+  }
   done();
 }
 
