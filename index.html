@@ -99,6 +99,7 @@ const SCRIPT = [
   'ช่วงนี้เป็นยังไงบ้าง สบายดีไหมคะ',
   'ถ้าพร้อมแล้ว กดปุ่มด้านล่างเพื่อประเมินได้เลยค่ะ',
 ];
+const AUDIO = ['line1.wav','line2.wav','line3.wav']; // เสียงพากย์ตรงกับ SCRIPT (Gemini TTS Kore)
 const RATE_ITEMS = [
   { key:'comfort',  q:'รู้สึกสบายใจแค่ไหน',           lo:'ไม่สบายใจเลย', hi:'สบายใจมาก' },
   { key:'trust',    q:'รู้สึกไว้ใจแค่ไหน',             lo:'ไม่ไว้ใจเลย',  hi:'ไว้ใจมาก' },
@@ -172,20 +173,35 @@ function avatarView(i){
   app.innerHTML = `
     <div class="card stage">
       <div class="kick">${a.name} จาก ${AVATARS.length}</div>
-      <div class="avwrap"><div class="ring"></div><img src="${a.img}" alt="${a.label}"><div class="speak"><b></b>กำลังพูด...</div></div>
+      <div class="avwrap"><div class="ring"></div><img src="${a.img}" alt="${a.label}"><div class="speak" id="speak"><b></b>กำลังพูด...</div></div>
       <div class="say" id="say"></div>
+      <button class="btn ghost" id="v-replay" style="margin-top:14px">🔊 ฟังอีกครั้ง</button>
       <button class="btn" id="v-go" disabled>ประเมินแบบนี้</button>
     </div>`;
   const say=document.getElementById('say');
-  // เล่นบทพูดทีละบรรทัด (แทน video loop ไปก่อน)
+  const btn=document.getElementById('v-go');
+  const speak=document.getElementById('speak');
   say.innerHTML = SCRIPT.map((s,k)=>`<div class="q" id="q${k}">${s}</div>`).join('');
-  let k=0;
-  (function next(){
-    if(k>0) document.getElementById('q'+(k-1));
-    if(k<SCRIPT.length){ document.getElementById('q'+k).classList.add('show'); k++; setTimeout(next, 1100); }
-    else { document.getElementById('v-go').disabled=false; }
-  })();
-  document.getElementById('v-go').onclick=()=>rate(i);
+  // เสียงพากย์ (Gemini TTS, เสียงเดียวกันทุก avatar = คุมตัวแปร)
+  const audios = SCRIPT.map((_,k)=>{ const au=new Audio(AUDIO[k]); au.preload='auto'; return au; });
+  function play(){
+    btn.disabled=true; speak.style.opacity='1';
+    document.querySelectorAll('.say .q').forEach(q=>q.classList.remove('show'));
+    let k=0;
+    (function next(){
+      if(k>=SCRIPT.length){ btn.disabled=false; speak.style.opacity='0'; return; }
+      document.getElementById('q'+k).classList.add('show');
+      const au=audios[k];
+      au.currentTime=0;
+      au.onended=()=>{ k++; setTimeout(next,350); };
+      au.onerror=()=>{ k++; setTimeout(next,1000); };            // ถ้าโหลดเสียงไม่ได้
+      const p=au.play();
+      if(p&&p.catch) p.catch(()=>{ au.onended=null; setTimeout(()=>{k++;next();},1200); }); // ถ้า browser บล็อก autoplay
+    })();
+  }
+  play();
+  document.getElementById('v-replay').onclick=play;
+  btn.onclick=()=>{ audios.forEach(au=>au.pause()); rate(i); };
 }
 
 function rate(i){
