@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>การทดสอบ Avatar — งานวิจัยคัดกรองภาวะซึมเศร้า</title>
+<title>Avatar Test — Depression Screening Study</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
@@ -17,7 +17,7 @@
   *{box-sizing:border-box;margin:0;padding:0;font-family:var(--sans)}
   body{background:var(--bg);color:var(--ink);min-height:100vh;
     background-image:radial-gradient(60vmax 40vmax at 80% -10%,rgba(139,92,246,.18),transparent 60%),radial-gradient(50vmax 40vmax at 0% 110%,rgba(56,189,248,.12),transparent 55%);}
-  .wrap{max-width:640px;margin:0 auto;padding:32px 22px 60px;min-height:100vh;display:flex;flex-direction:column;justify-content:center}
+  .wrap{max-width:640px;margin:0 auto;padding:56px 22px 60px;min-height:100vh;display:flex;flex-direction:column;justify-content:center}
   .card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:30px 26px;backdrop-filter:blur(8px)}
   .kick{font-family:var(--mono);font-size:12px;letter-spacing:.25em;text-transform:uppercase;color:var(--c);margin-bottom:12px}
   h1{font-size:26px;font-weight:800;line-height:1.15;margin-bottom:8px}
@@ -38,13 +38,15 @@
   .prog{display:flex;gap:6px;justify-content:center;margin-bottom:20px}
   .prog i{width:34px;height:5px;border-radius:3px;background:rgba(255,255,255,.14);transition:.3s}
   .prog i.on{background:linear-gradient(100deg,var(--c),var(--v))}
-  /* avatar stage */
+  .langsw{position:fixed;top:14px;right:14px;z-index:20;display:flex;background:var(--card);border:1px solid var(--line);border-radius:999px;overflow:hidden;font-family:var(--mono);font-size:12px;backdrop-filter:blur(8px)}
+  .langsw button{background:transparent;border:none;color:var(--muted);padding:7px 13px;cursor:pointer;font-weight:600}
+  .langsw button.on{background:linear-gradient(100deg,var(--c),var(--v));color:#0a0b16}
   .stage{text-align:center}
   .avwrap{position:relative;width:230px;height:300px;margin:6px auto 0;border-radius:20px;overflow:hidden;
     border:1px solid var(--line);box-shadow:0 24px 60px rgba(0,0,0,.5)}
   .avwrap img{width:100%;height:100%;object-fit:cover;display:block}
   .speak{position:absolute;left:0;right:0;bottom:0;padding:10px;font-family:var(--mono);font-size:12px;letter-spacing:.1em;
-    background:linear-gradient(0deg,rgba(10,11,22,.85),transparent);color:var(--c)}
+    background:linear-gradient(0deg,rgba(10,11,22,.85),transparent);color:var(--c);transition:opacity .3s}
   .speak b{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--c);margin-right:6px;animation:pulse 1s infinite}
   @keyframes pulse{50%{opacity:.25;transform:scale(.7)}}
   .ring{position:absolute;inset:-3px;border-radius:22px;border:2px solid transparent;
@@ -54,11 +56,8 @@
     font-size:16px;line-height:1.7;text-align:left;min-height:96px}
   .say .q{opacity:0;transform:translateY(6px);transition:.5s}
   .say .q.show{opacity:1;transform:none}
-  /* rating */
-  .rate{margin-top:6px}
   .rrow{margin:18px 0}
   .rrow .lab{font-size:15px;font-weight:600;margin-bottom:10px}
-  .rrow .lab small{display:block;font-weight:400;color:var(--dim);font-size:12px;margin-top:2px}
   .scale{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
   .scale button{aspect-ratio:1;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03);
     color:var(--muted);font-size:17px;font-weight:700;cursor:pointer;transition:.12s}
@@ -75,128 +74,166 @@
   .big{font-size:52px;margin:6px 0}
   .chk{display:flex;gap:10px;align-items:flex-start;margin-top:18px;font-size:14px;color:var(--muted);cursor:pointer}
   .chk input{width:auto;margin-top:3px}
-  .hidden{display:none}
 </style>
 </head>
 <body>
+<div class="langsw" id="langsw"><button data-l="th">ไทย</button><button data-l="en">EN</button></div>
 <div class="wrap">
   <div class="prog" id="prog"></div>
   <div id="app"></div>
-  <div class="foot">ACMod · CAMT × Bournemouth University · v0.1 (test)</div>
+  <div class="foot" id="foot"></div>
 </div>
 
 <script>
-/* ============ CONFIG ============ */
-// ลำดับที่ทดสอบ: เหมือนคนน้อย -> มาก (orb -> cartoon -> realistic)
-const AVATARS = [
-  { id:'orb',       name:'แบบที่ 1',  img:'av_orb.jpg',       label:'เสียง (ไม่มีหน้า)' },
-  { id:'cartoon',   name:'แบบที่ 2',  img:'av_stylized.jpg',  label:'การ์ตูน' },
-  { id:'realistic', name:'แบบที่ 3',  img:'av_realistic.jpg', label:'หน้าคนจริง' },
-];
-// บทพูดเหมือนกันทุกแบบ (คุมตัวแปร: เปลี่ยนแค่หน้า)
-const SCRIPT = [
-  'สวัสดีค่ะ ยินดีที่ได้คุยกันนะคะ',
-  'ช่วงนี้เป็นยังไงบ้าง สบายดีไหมคะ',
-  'ถ้าพร้อมแล้ว กดปุ่มด้านล่างเพื่อประเมินได้เลยค่ะ',
-];
-const AUDIO = ['line1.wav','line2.wav','line3.wav']; // เสียงพากย์ตรงกับ SCRIPT (Gemini TTS Kore)
-const RATE_ITEMS = [
-  { key:'comfort',  q:'รู้สึกสบายใจแค่ไหน',           lo:'ไม่สบายใจเลย', hi:'สบายใจมาก' },
-  { key:'trust',    q:'รู้สึกไว้ใจแค่ไหน',             lo:'ไม่ไว้ใจเลย',  hi:'ไว้ใจมาก' },
-  { key:'creepy',   q:'รู้สึกน่าขนลุก/แปลก ๆ ไหม',    lo:'ไม่เลย',       hi:'ขนลุกมาก' },
-  { key:'openness', q:'อยากเปิดใจเล่าเรื่องจริง ๆ แค่ไหน', lo:'ไม่อยากเลย', hi:'อยากมาก' },
-];
-const DATA_ENDPOINT = ''; // ใส่ URL backend ทีหลังเพื่อเก็บ data ข้ามเครื่อง (ตอนนี้เก็บใน localStorage)
-/* ================================ */
+/* ============ CONTENT (per language) ============ */
+const I18N = {
+  th:{
+    foot:'ACMod · CAMT × Bournemouth University · v0.1 (test)',
+    w_kick:'งานวิจัย · การคัดกรองด้วยการสนทนา', w_h1a:'คุยกับ ', w_h1b:'ผู้ช่วย AI 3 แบบ',
+    w_intro:'คุณจะได้ลองคุยกับผู้ช่วย AI 3 แบบสั้น ๆ แล้วให้คะแนนความรู้สึก ใช้เวลาประมาณ 5 นาที ไม่มีคำตอบถูกผิด บอกความรู้สึกจริงได้เลยค่ะ',
+    w_consent:'ฉันยินยอมเข้าร่วมและให้เก็บข้อมูลเพื่อการวิจัย ข้อมูลจะถูกเก็บเป็นความลับและใช้เพื่อการศึกษาเท่านั้น',
+    w_start:'เริ่มต้น',
+    f_kick:'ก่อนเริ่ม · ข้อมูลผู้เข้าร่วม', f_h:'ขอข้อมูลสักนิดนะคะ',
+    f_name:'ชื่อ (หรือชื่อเล่น)', f_name_ph:'เช่น ภูมิ', f_email:'อีเมล', f_email_ph:'you@email.com',
+    f_gender:'เพศ', g_select:'เลือก', g_m:'ชาย', g_f:'หญิง', g_na:'ไม่ระบุ', g_other:'อื่น ๆ',
+    f_age:'อายุ', f_age_ph:'เช่น 25', f_next:'ถัดไป',
+    e_name:'กรุณากรอกชื่อ', e_email:'กรุณากรอกอีเมลให้ถูกต้อง', e_gender:'กรุณาเลือกเพศ', e_age:'กรุณากรอกอายุให้ถูกต้อง',
+    v_of:'จาก', v_speaking:'กำลังพูด...', v_replay:'🔊 ฟังอีกครั้ง', v_go:'ประเมินแบบนี้',
+    r_kick:'ให้คะแนนความรู้สึก', r_h_a:'คุยกับ', r_h_b:'แล้ว รู้สึกยังไง', r_err:'กรุณาให้คะแนนทุกข้อ',
+    r_next:'ไปแบบต่อไป', r_last:'ไปหน้าสุดท้าย',
+    fi_kick:'เกือบเสร็จแล้ว', fi_h_a:'ชอบ', fi_h_b:'แบบไหนมากที่สุด?',
+    fi_intro:'เลือกผู้ช่วย AI ที่คุณรู้สึกสบายใจและอยากคุยด้วยมากที่สุด',
+    fi_cmt:'อยากบอกอะไรเพิ่มไหม (ไม่บังคับ)', fi_cmt_ph:'เช่น ทำไมถึงชอบแบบนี้...',
+    fi_err:'กรุณาเลือกแบบที่ชอบที่สุด', fi_go:'ส่งคำตอบ',
+    d_h:'ขอบคุณมากค่ะ!', d_p:'คำตอบของคุณถูกบันทึกแล้ว มีค่ามากสำหรับงานวิจัยนี้ ขอบคุณที่สละเวลานะคะ', d_again:'เริ่มใหม่ (สำหรับคนถัดไป)',
+    avatars:[{id:'orb',name:'แบบที่ 1',img:'av_orb.jpg',label:'เสียง (ไม่มีหน้า)'},{id:'cartoon',name:'แบบที่ 2',img:'av_stylized.jpg',label:'การ์ตูน'},{id:'realistic',name:'แบบที่ 3',img:'av_realistic.jpg',label:'หน้าคนจริง'}],
+    script:['สวัสดีค่ะ ยินดีที่ได้คุยกันนะคะ','ช่วงนี้เป็นยังไงบ้าง สบายดีไหมคะ','ถ้าพร้อมแล้ว กดปุ่มด้านล่างเพื่อประเมินได้เลยค่ะ'],
+    audio:['line1.wav','line2.wav','line3.wav'],
+    rate:[{key:'comfort',q:'รู้สึกสบายใจแค่ไหน',lo:'ไม่สบายใจเลย',hi:'สบายใจมาก'},{key:'trust',q:'รู้สึกไว้ใจแค่ไหน',lo:'ไม่ไว้ใจเลย',hi:'ไว้ใจมาก'},{key:'creepy',q:'รู้สึกน่าขนลุก/แปลก ๆ ไหม',lo:'ไม่เลย',hi:'ขนลุกมาก'},{key:'openness',q:'อยากเปิดใจเล่าเรื่องจริง ๆ แค่ไหน',lo:'ไม่อยากเลย',hi:'อยากมาก'}],
+  },
+  en:{
+    foot:'ACMod · CAMT × Bournemouth University · v0.1 (test)',
+    w_kick:'Research · Conversational screening', w_h1a:'Talk with ', w_h1b:'three AI helpers',
+    w_intro:'You will briefly talk with three AI helpers, then rate how each one felt. It takes about 5 minutes. There are no right or wrong answers, just share how you honestly feel.',
+    w_consent:'I agree to take part and to have my data collected for research. Data is kept confidential and used only for this study.',
+    w_start:'Start',
+    f_kick:'Before we start · About you', f_h:'A few quick details',
+    f_name:'Name (or nickname)', f_name_ph:'e.g. Poom', f_email:'Email', f_email_ph:'you@email.com',
+    f_gender:'Gender', g_select:'Select', g_m:'Male', g_f:'Female', g_na:'Prefer not to say', g_other:'Other',
+    f_age:'Age', f_age_ph:'e.g. 25', f_next:'Next',
+    e_name:'Please enter your name', e_email:'Please enter a valid email', e_gender:'Please select gender', e_age:'Please enter a valid age',
+    v_of:'of', v_speaking:'speaking...', v_replay:'🔊 Play again', v_go:'Rate this one',
+    r_kick:'Rate how it felt', r_h_a:'You talked with ', r_h_b:'. How did it feel?', r_err:'Please rate every item',
+    r_next:'Next face', r_last:'Final step',
+    fi_kick:'Almost done', fi_h_a:'Which did you ', fi_h_b:'like most?',
+    fi_intro:'Choose the AI helper you felt most comfortable with and would most want to talk to.',
+    fi_cmt:'Anything you want to add? (optional)', fi_cmt_ph:'e.g. why you liked that one...',
+    fi_err:'Please choose the one you liked most', fi_go:'Submit',
+    d_h:'Thank you!', d_p:'Your answers have been saved. They mean a lot to this research. Thank you for your time.', d_again:'Start again (for the next person)',
+    avatars:[{id:'orb',name:'Face 1',img:'av_orb.jpg',label:'Voice (no face)'},{id:'cartoon',name:'Face 2',img:'av_stylized.jpg',label:'Cartoon'},{id:'realistic',name:'Face 3',img:'av_realistic.jpg',label:'Real face'}],
+    script:["Hi, it's nice to talk with you.","How have you been lately? Are you doing okay?","When you're ready, tap the button below to rate this one."],
+    audio:['line1_en.wav','line2_en.wav','line3_en.wav'],
+    rate:[{key:'comfort',q:'How comfortable did you feel?',lo:'Not at all',hi:'Very'},{key:'trust',q:'How much did you trust it?',lo:'Not at all',hi:'A lot'},{key:'creepy',q:'Did it feel creepy or strange?',lo:'Not at all',hi:'Very creepy'},{key:'openness',q:'How willing were you to open up honestly?',lo:'Not at all',hi:'Very willing'}],
+  }
+};
+const DATA_ENDPOINT = ''; // ใส่ URL backend ทีหลังเพื่อเก็บ data ข้ามเครื่อง (ตอนนี้เก็บ localStorage)
+/* ================================================ */
 
+let LANG = localStorage.getItem('avatarTestLang') || 'th';
 const app = document.getElementById('app');
 const progEl = document.getElementById('prog');
-const state = { participant:{}, ratings:{}, preference:null, comment:'', startedAt:new Date().toISOString() };
-let step = 0; // 0=welcome,1=form, then per avatar: view+rate, then final, then done
-const TOTAL_DOTS = 3 + AVATARS.length; // form + 3 avatars + final + ... simple
-function setProg(active){
-  const n = 2 + AVATARS.length + 1; // welcome/form counted loosely
-  progEl.innerHTML = Array.from({length:AVATARS.length+2},(_,i)=>`<i class="${i<active?'on':''}"></i>`).join('');
+const footEl = document.getElementById('foot');
+const state = { participant:{}, ratings:{}, preference:null, comment:'', draft:{}, startedAt:new Date().toISOString() };
+let current = welcome;
+const L = ()=>I18N[LANG];
+function setProg(active){ progEl.innerHTML = Array.from({length:I18N.th.avatars.length+2},(_,i)=>`<i class="${i<active?'on':''}"></i>`).join(''); }
+function val(id){ return (document.getElementById(id)?.value||'').trim(); }
+
+/* language switch */
+function renderLangSw(){
+  document.querySelectorAll('#langsw button').forEach(b=>{
+    b.classList.toggle('on', b.dataset.l===LANG);
+    b.onclick=()=>{ if(b.dataset.l===LANG) return; LANG=b.dataset.l; localStorage.setItem('avatarTestLang',LANG);
+      document.documentElement.lang=LANG; footEl.textContent=L().foot; renderLangSw(); if(current) current(); };
+  });
 }
 
 /* ---------- screens ---------- */
 function welcome(){
-  setProg(0);
+  current=welcome; setProg(0); const T=L();
   app.innerHTML = `
     <div class="card center">
-      <div class="kick">งานวิจัย · การคัดกรองด้วยการสนทนา</div>
-      <h1>คุยกับ <span class="grad">ผู้ช่วย AI 3 แบบ</span></h1>
-      <p style="margin-top:10px">คุณจะได้ลองคุยกับผู้ช่วย AI 3 แบบสั้น ๆ แล้วให้คะแนนความรู้สึก ใช้เวลาประมาณ 5 นาที ไม่มีคำตอบถูกผิด บอกความรู้สึกจริงได้เลยค่ะ</p>
-      <label class="chk"><input type="checkbox" id="consent"><span>ฉันยินยอมเข้าร่วมและให้เก็บข้อมูลเพื่อการวิจัย ข้อมูลจะถูกเก็บเป็นความลับและใช้เพื่อการศึกษาเท่านั้น</span></label>
-      <button class="btn" id="go" disabled>เริ่มต้น</button>
+      <div class="kick">${T.w_kick}</div>
+      <h1>${T.w_h1a}<span class="grad">${T.w_h1b}</span></h1>
+      <p style="margin-top:10px">${T.w_intro}</p>
+      <label class="chk"><input type="checkbox" id="consent"><span>${T.w_consent}</span></label>
+      <button class="btn" id="go" disabled>${T.w_start}</button>
     </div>`;
   const c=document.getElementById('consent'), g=document.getElementById('go');
   c.onchange=()=>g.disabled=!c.checked;
-  g.onclick=()=>{ step=1; form(); };
+  g.onclick=()=>form();
 }
 
 function form(){
-  setProg(1);
+  current=form; setProg(1); const T=L(); const d=state.draft;
   app.innerHTML = `
     <div class="card">
-      <div class="kick">ก่อนเริ่ม · ข้อมูลผู้เข้าร่วม</div>
-      <h2>ขอข้อมูลสักนิดนะคะ</h2>
-      <label>ชื่อ (หรือชื่อเล่น)</label>
-      <input id="f-name" placeholder="เช่น ภูมิ" autocomplete="off">
-      <label>อีเมล</label>
-      <input id="f-email" type="email" placeholder="you@email.com" autocomplete="off">
-      <label>เพศ</label>
+      <div class="kick">${T.f_kick}</div>
+      <h2>${T.f_h}</h2>
+      <label>${T.f_name}</label><input id="f-name" placeholder="${T.f_name_ph}" autocomplete="off" value="${d.name||''}">
+      <label>${T.f_email}</label><input id="f-email" type="email" placeholder="${T.f_email_ph}" autocomplete="off" value="${d.email||''}">
+      <label>${T.f_gender}</label>
       <select id="f-gender">
-        <option value="">เลือก</option>
-        <option>ชาย</option><option>หญิง</option><option>ไม่ระบุ</option><option>อื่น ๆ</option>
+        <option value="">${T.g_select}</option>
+        <option value="M" ${d.gender==='M'?'selected':''}>${T.g_m}</option>
+        <option value="F" ${d.gender==='F'?'selected':''}>${T.g_f}</option>
+        <option value="NA" ${d.gender==='NA'?'selected':''}>${T.g_na}</option>
+        <option value="O" ${d.gender==='O'?'selected':''}>${T.g_other}</option>
       </select>
-      <label>อายุ</label>
-      <input id="f-age" type="number" min="1" max="120" placeholder="เช่น 25">
+      <label>${T.f_age}</label><input id="f-age" type="number" min="1" max="120" placeholder="${T.f_age_ph}" value="${d.age||''}">
       <div class="err" id="f-err"></div>
-      <button class="btn" id="f-go">ถัดไป</button>
+      <button class="btn" id="f-go">${T.f_next}</button>
     </div>`;
+  ['f-name','f-email','f-gender','f-age'].forEach(id=>{
+    const el=document.getElementById(id);
+    el.oninput=el.onchange=()=>{ d.name=val('f-name'); d.email=val('f-email'); d.gender=val('f-gender'); d.age=val('f-age'); };
+  });
   document.getElementById('f-go').onclick=()=>{
-    const name=val('f-name'), email=val('f-email'), gender=val('f-gender'), age=val('f-age');
+    d.name=val('f-name'); d.email=val('f-email'); d.gender=val('f-gender'); d.age=val('f-age');
     const err=document.getElementById('f-err');
-    if(!name){ err.textContent='กรุณากรอกชื่อ'; return; }
-    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ err.textContent='กรุณากรอกอีเมลให้ถูกต้อง'; return; }
-    if(!gender){ err.textContent='กรุณาเลือกเพศ'; return; }
-    if(!age || +age<1 || +age>120){ err.textContent='กรุณากรอกอายุให้ถูกต้อง'; return; }
-    state.participant={ name,email,gender,age:+age };
-    step=2; avatarView(0);
+    if(!d.name){ err.textContent=T.e_name; return; }
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)){ err.textContent=T.e_email; return; }
+    if(!d.gender){ err.textContent=T.e_gender; return; }
+    if(!d.age || +d.age<1 || +d.age>120){ err.textContent=T.e_age; return; }
+    state.participant={ name:d.name, email:d.email, gender:d.gender, age:+d.age };
+    avatarView(0);
   };
 }
 
 function avatarView(i){
-  setProg(2+i);
-  const a=AVATARS[i];
+  current=()=>avatarView(i); setProg(2+i); const T=L(); const a=T.avatars[i];
   app.innerHTML = `
     <div class="card stage">
-      <div class="kick">${a.name} จาก ${AVATARS.length}</div>
-      <div class="avwrap"><div class="ring"></div><img src="${a.img}" alt="${a.label}"><div class="speak" id="speak"><b></b>กำลังพูด...</div></div>
+      <div class="kick">${a.name} ${T.v_of} ${T.avatars.length}</div>
+      <div class="avwrap"><div class="ring"></div><img src="${a.img}" alt="${a.label}"><div class="speak" id="speak"><b></b>${T.v_speaking}</div></div>
       <div class="say" id="say"></div>
-      <button class="btn ghost" id="v-replay" style="margin-top:14px">🔊 ฟังอีกครั้ง</button>
-      <button class="btn" id="v-go" disabled>ประเมินแบบนี้</button>
+      <button class="btn ghost" id="v-replay" style="margin-top:14px">${T.v_replay}</button>
+      <button class="btn" id="v-go" disabled>${T.v_go}</button>
     </div>`;
-  const say=document.getElementById('say');
-  const btn=document.getElementById('v-go');
-  const speak=document.getElementById('speak');
-  say.innerHTML = SCRIPT.map((s,k)=>`<div class="q" id="q${k}">${s}</div>`).join('');
-  // เสียงพากย์ (Gemini TTS, เสียงเดียวกันทุก avatar = คุมตัวแปร)
-  const audios = SCRIPT.map((_,k)=>{ const au=new Audio(AUDIO[k]); au.preload='auto'; return au; });
+  const say=document.getElementById('say'), btn=document.getElementById('v-go'), speak=document.getElementById('speak');
+  say.innerHTML = T.script.map((s,k)=>`<div class="q" id="q${k}">${s}</div>`).join('');
+  const audios = T.script.map((_,k)=>{ const au=new Audio(T.audio[k]); au.preload='auto'; return au; });
   function play(){
     btn.disabled=true; speak.style.opacity='1';
     document.querySelectorAll('.say .q').forEach(q=>q.classList.remove('show'));
     let k=0;
     (function next(){
-      if(k>=SCRIPT.length){ btn.disabled=false; speak.style.opacity='0'; return; }
+      if(k>=T.script.length){ btn.disabled=false; speak.style.opacity='0'; return; }
       document.getElementById('q'+k).classList.add('show');
-      const au=audios[k];
-      au.currentTime=0;
+      const au=audios[k]; au.currentTime=0;
       au.onended=()=>{ k++; setTimeout(next,350); };
-      au.onerror=()=>{ k++; setTimeout(next,1000); };            // ถ้าโหลดเสียงไม่ได้
-      const p=au.play();
-      if(p&&p.catch) p.catch(()=>{ au.onended=null; setTimeout(()=>{k++;next();},1200); }); // ถ้า browser บล็อก autoplay
+      au.onerror=()=>{ k++; setTimeout(next,1000); };
+      const p=au.play(); if(p&&p.catch) p.catch(()=>{ au.onended=null; setTimeout(()=>{k++;next();},1200); });
     })();
   }
   play();
@@ -205,101 +242,101 @@ function avatarView(i){
 }
 
 function rate(i){
-  const a=AVATARS[i];
-  const ans={};
+  current=()=>rate(i); const T=L(); const a=T.avatars[i];
+  state.ratings[a.id]=state.ratings[a.id]||{};
+  const saved=state.ratings[a.id];
   app.innerHTML = `
     <div class="card">
-      <div class="kick">${a.name} · ให้คะแนนความรู้สึก</div>
-      <h2>คุยกับ${a.label}แล้ว รู้สึกยังไง</h2>
-      <div class="rate" id="rate"></div>
+      <div class="kick">${a.name} · ${T.r_kick}</div>
+      <h2>${T.r_h_a}${a.label}${T.r_h_b}</h2>
+      <div id="rate"></div>
       <div class="err" id="r-err"></div>
-      <button class="btn" id="r-go">${i<AVATARS.length-1?'ไปแบบต่อไป':'ไปหน้าสุดท้าย'}</button>
+      <button class="btn" id="r-go">${i<T.avatars.length-1?T.r_next:T.r_last}</button>
     </div>`;
   const box=document.getElementById('rate');
-  box.innerHTML = RATE_ITEMS.map(it=>`
+  box.innerHTML = T.rate.map(it=>`
     <div class="rrow" data-key="${it.key}">
       <div class="lab">${it.q}</div>
-      <div class="scale">${[1,2,3,4,5].map(n=>`<button data-n="${n}">${n}</button>`).join('')}</div>
+      <div class="scale">${[1,2,3,4,5].map(n=>`<button data-n="${n}" class="${saved[it.key]===n?'sel':''}">${n}</button>`).join('')}</div>
       <div class="ends"><span>${it.lo}</span><span>${it.hi}</span></div>
     </div>`).join('');
   box.querySelectorAll('.rrow').forEach(row=>{
     row.querySelectorAll('button').forEach(b=>b.onclick=()=>{
       row.querySelectorAll('button').forEach(x=>x.classList.remove('sel'));
-      b.classList.add('sel'); ans[row.dataset.key]=+b.dataset.n;
+      b.classList.add('sel'); saved[row.dataset.key]=+b.dataset.n;
     });
   });
   document.getElementById('r-go').onclick=()=>{
-    if(Object.keys(ans).length<RATE_ITEMS.length){ document.getElementById('r-err').textContent='กรุณาให้คะแนนทุกข้อ'; return; }
-    state.ratings[a.id]=ans;
-    if(i<AVATARS.length-1) avatarView(i+1); else final();
+    if(Object.keys(saved).length<T.rate.length){ document.getElementById('r-err').textContent=T.r_err; return; }
+    if(i<T.avatars.length-1) avatarView(i+1); else final();
   };
 }
 
 function final(){
-  setProg(2+AVATARS.length);
+  current=final; setProg(2+I18N.th.avatars.length); const T=L();
   app.innerHTML = `
     <div class="card">
-      <div class="kick">เกือบเสร็จแล้ว</div>
-      <h2>ชอบ<span class="grad">แบบไหนมากที่สุด?</span></h2>
-      <p style="margin-top:6px">เลือกผู้ช่วย AI ที่คุณรู้สึกสบายใจและอยากคุยด้วยมากที่สุด</p>
+      <div class="kick">${T.fi_kick}</div>
+      <h2>${T.fi_h_a}<span class="grad">${T.fi_h_b}</span></h2>
+      <p style="margin-top:6px">${T.fi_intro}</p>
       <div class="choice" id="choice">
-        ${AVATARS.map(a=>`<button data-id="${a.id}"><img src="${a.img}"><span>${a.label}</span></button>`).join('')}
+        ${T.avatars.map(a=>`<button data-id="${a.id}" class="${state.preference===a.id?'sel':''}"><img src="${a.img}"><span>${a.label}</span></button>`).join('')}
       </div>
-      <label>อยากบอกอะไรเพิ่มไหม (ไม่บังคับ)</label>
-      <textarea id="cmt" rows="3" placeholder="เช่น ทำไมถึงชอบแบบนี้..."></textarea>
+      <label>${T.fi_cmt}</label>
+      <textarea id="cmt" rows="3" placeholder="${T.fi_cmt_ph}">${state.comment||''}</textarea>
       <div class="err" id="fi-err"></div>
-      <button class="btn" id="fi-go">ส่งคำตอบ</button>
+      <button class="btn" id="fi-go">${T.fi_go}</button>
     </div>`;
   document.querySelectorAll('#choice button').forEach(b=>b.onclick=()=>{
     document.querySelectorAll('#choice button').forEach(x=>x.classList.remove('sel'));
     b.classList.add('sel'); state.preference=b.dataset.id;
   });
+  document.getElementById('cmt').oninput=e=>state.comment=e.target.value;
   document.getElementById('fi-go').onclick=()=>{
-    if(!state.preference){ document.getElementById('fi-err').textContent='กรุณาเลือกแบบที่ชอบที่สุด'; return; }
-    state.comment=val('cmt');
-    submit();
+    if(!state.preference){ document.getElementById('fi-err').textContent=T.fi_err; return; }
+    state.comment=val('cmt'); submit();
   };
 }
 
 async function submit(){
-  state.finishedAt=new Date().toISOString();
-  // เก็บลง localStorage (backup/ตอนยังไม่มี backend)
+  state.finishedAt=new Date().toISOString(); state.lang=LANG;
   try{ const all=JSON.parse(localStorage.getItem('avatarTest')||'[]'); all.push(state); localStorage.setItem('avatarTest',JSON.stringify(all)); }catch(e){}
-  // ส่งไป backend ถ้ามี
   if(DATA_ENDPOINT){ try{ await fetch(DATA_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(state)}); }catch(e){} }
   done();
 }
 
 function done(){
-  progEl.innerHTML='';
+  current=done; progEl.innerHTML=''; const T=L();
   app.innerHTML = `
     <div class="card center">
       <div class="big">🎉</div>
-      <h1>ขอบคุณมากค่ะ!</h1>
-      <p style="margin-top:8px">คำตอบของคุณถูกบันทึกแล้ว มีค่ามากสำหรับงานวิจัยนี้ ขอบคุณที่สละเวลานะคะ</p>
-      <button class="btn ghost" id="again" style="margin-top:24px">เริ่มใหม่ (สำหรับคนถัดไป)</button>
+      <h1>${T.d_h}</h1>
+      <p style="margin-top:8px">${T.d_p}</p>
+      <button class="btn ghost" id="again" style="margin-top:24px">${T.d_again}</button>
     </div>`;
   document.getElementById('again').onclick=()=>location.reload();
 }
 
-/* helpers */
-function val(id){ return (document.getElementById(id)?.value||'').trim(); }
-
-/* hidden researcher export: Shift+E = โหลดคำตอบทั้งหมดเป็น CSV (จากเครื่องนี้) */
+/* hidden researcher export: Shift+E = CSV ของคำตอบทั้งหมด (จากเครื่องนี้) */
 addEventListener('keydown',e=>{
   if(e.shiftKey && e.code==='KeyE'){
     const all=JSON.parse(localStorage.getItem('avatarTest')||'[]'); if(!all.length) return;
-    const rows=[['name','email','gender','age','pref','comment','startedAt','finishedAt',
-      ...AVATARS.flatMap(a=>RATE_ITEMS.map(it=>a.id+'_'+it.key))]];
-    all.forEach(r=>rows.push([r.participant.name,r.participant.email,r.participant.gender,r.participant.age,
+    const AV=I18N.th.avatars, RI=I18N.th.rate;
+    const head=['name','email','gender','age','lang','pref','comment','startedAt','finishedAt',
+      ...AV.flatMap(a=>RI.map(it=>a.id+'_'+it.key))];
+    const rows=[head];
+    all.forEach(r=>rows.push([r.participant.name,r.participant.email,r.participant.gender,r.participant.age,r.lang||'',
       r.preference,(r.comment||'').replace(/[\r\n,]/g,' '),r.startedAt,r.finishedAt,
-      ...AVATARS.flatMap(a=>RATE_ITEMS.map(it=>r.ratings?.[a.id]?.[it.key]??''))]));
+      ...AV.flatMap(a=>RI.map(it=>r.ratings?.[a.id]?.[it.key]??''))]));
     const csv=rows.map(r=>r.map(c=>`"${String(c??'').replace(/"/g,'""')}"`).join(',')).join('\n');
     const blob=new Blob(['﻿'+csv],{type:'text/csv'}); const u=URL.createObjectURL(blob);
     const a=document.createElement('a'); a.href=u; a.download='avatar_test_responses.csv'; a.click();
   }
 });
 
+document.documentElement.lang=LANG;
+footEl.textContent=L().foot;
+renderLangSw();
 welcome();
 </script>
 </body>
